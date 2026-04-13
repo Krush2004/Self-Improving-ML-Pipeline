@@ -1,0 +1,23 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments (Safety)
+.env
+env/
+venv/
+.venv/
+
+# IDE Settings
+.vscode/
+.idea/
+
+# Local Data files
+*.csv
+*.xlsx
+*.parquet
+*.h5
+
+# Logs
+*.log

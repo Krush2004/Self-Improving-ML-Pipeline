@@ -1,0 +1,14 @@
+streamlit
+pandas
+scikit-learn
+langchain
+langchain-core
+langchain-community
+langchain-openai
+pinecone
+python-dotenv
+plotly
+xgboost
+seaborn
+matplotlib
+imbalanced-learn
