@@ -12,3 +12,4 @@ xgboost
 seaborn
 matplotlib
 imbalanced-learn
+torchvision

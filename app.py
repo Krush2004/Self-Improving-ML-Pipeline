@@ -28,24 +28,61 @@ st.markdown("""
         font-weight: 600 !important;
         padding: 5px 10px;
     }
-    .metric-card {
+    .metric-card, .feature-card {
         background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
         border: 1px solid rgba(255, 255, 255, 0.1);
-        padding: 20px;
-        border-radius: 12px;
+        padding: 30px;
+        border-radius: 20px;
         text-align: center;
         margin-bottom: 20px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        transition: all 0.3s ease;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        min-height: 260px;
     }
+    .feature-card:hover {
+        transform: translateY(-5px);
+        border: 1px solid rgba(59, 130, 246, 0.5);
+        background: rgba(255, 255, 255, 0.08);
+        box-shadow: 0 12px 40px 0 rgba(59, 130, 246, 0.2);
+    }
+    .feature-icon { font-size: 3rem; margin-bottom: 15px; }
+    .feature-title { font-size: 1.5rem; font-weight: 700; color: #fff; margin-bottom: 10px; }
+    .feature-desc { font-size: 1rem; color: #a1a1aa; line-height: 1.6; }
     .metric-title { font-size: 1.2rem; color: #a1a1aa; margin-bottom: 5px; font-weight: 500; }
     .metric-value { font-size: 2.2rem; font-weight: 700; color: #3b82f6; }
-    h1 { font-size: 3rem !important; font-weight: 800; }
-    h2 { font-size: 2.2rem !important; }
-    h3 { font-size: 1.8rem !important; }
-    /* Increase base text size slightly */
-    .stMarkdown p { font-size: 1.1rem; }
+    
+    .hero-section {
+        padding: 60px 0;
+        text-align: center;
+        background: radial-gradient(circle at top, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
+        border-radius: 30px;
+        margin-bottom: 40px;
+    }
+    h1 { 
+        font-size: 4rem !important; 
+        font-weight: 900 !important; 
+        background: linear-gradient(90deg, #fff, #3b82f6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 1rem !important;
+    }
+    h2 { font-size: 2.5rem !important; font-weight: 700 !important; }
+    h3 { font-size: 1.8rem !important; font-weight: 600 !important; }
+    .stMarkdown p { font-size: 1.15rem; color: #d4d4d8; }
+    
+    /* Animation for the cards */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade {
+        animation: fadeIn 0.8s ease-out forwards;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -58,14 +95,22 @@ if "messages" not in st.session_state:
 if "ml_context" not in st.session_state:
     st.session_state["ml_context"] = "No pipeline has been run yet. Tell the user to run the Supervised or Unsupervised pipeline first."
 
-st.title("🧠 Multi-AI Agent Workstation")
-st.markdown("Upload a dataset, run comprehensive ML pipelines, and chat dynamically with the AI Copilot to understand the results.")
+# Header logic moved inside the uploaded_file conditional
 
 # Sidebar Configuration
 st.sidebar.header("Data Source")
 uploaded_file = st.sidebar.file_uploader("Upload CSV Data", type=["csv"])
 
+if uploaded_file is None:
+    st.sidebar.divider()
+    st.sidebar.markdown("### 🛠️ Quick Start")
+    st.sidebar.info("1. **Upload** your dataset (.csv)\n2. **Choose** a target for ML\n3. **Analyze** with AI Analyst")
+
+    st.sidebar.divider()
+    st.sidebar.caption("v2.1.0 • Built with Pinecone & Langchain")
+
 if uploaded_file is not None:
+    st.title("🧠 Multi-AI Agent Workstation")
     df = pd.read_csv(uploaded_file)
     
     # Populate the Sidebar with Stats to keep it active
@@ -529,4 +574,68 @@ if uploaded_file is not None:
             st.session_state.messages.append(AIMessage(content=response))
 
 else:
-    st.info("👈 Please upload a CSV file from the sidebar to begin.")
+    # --- PREMIUM LANDING PAGE (NO FILE UPLOADED) ---
+    st.markdown("""
+    <div class='hero-section animate-fade'>
+        <h1>🤖 Self-Improving AI Multi-Agent Workstation</h1>
+        <h3 style='margin-bottom: 1rem;'>The ultimate machine learning workstation that builds, tunes, and critiques itself.</h3>
+        <p>Unlock the power of automated ML pipelines with vector memory and agentic self-critique.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Feature Grid
+    st.markdown("<h2 style='text-align: center; margin-bottom: 40px;'>Exploration Unleashed</h2>", unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown(f"""
+        <div class='feature-card animate-fade'>
+            <div class='feature-icon'>🎯</div>
+            <div class='feature-title'>Supervised ML</div>
+            <div class='feature-desc'>
+                Train 10+ algorithms. Advanced <b>Auto-Tuning</b> and class balancing find the absolute best model for your data.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    with col2:
+        st.markdown(f"""
+        <div class='feature-card animate-fade' style='animation-delay: 0.2s;'>
+            <div class='feature-icon'>🧩</div>
+            <div class='feature-title'>Unsupervised Discovery</div>
+            <div class='feature-desc'>
+                Find hidden patterns automatically. Compare multiple algorithms with interactive <b>3D visualizations</b>.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    with col3:
+        st.markdown(f"""
+        <div class='feature-card animate-fade' style='animation-delay: 0.4s;'>
+            <div class='feature-icon'>🧠</div>
+            <div class='feature-title'>AI Copilot & Critique</div>
+            <div class='feature-desc'>
+                Chat with an AI that knows your data. Get <b>Self-Critique</b> reports and mathematical improvement tips.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.divider()
+    
+    # "How it Works" or "Why it Matters" section
+    c1, c2 = st.columns([1, 1])
+    with c1:
+        st.markdown("### 🚀 Why this Workstation?")
+        st.markdown("""
+        - **Vector Memory Enabled**: Remembers past results to avoid repeating mistakes.
+        - **Automated Preprocessing**: Handles outliers, missing values, and high correlation automatically.
+        - **Production-Ready**: Export cleaned datasets and test models with live prediction forms.
+        """)
+    with c2:
+        st.info("👈 **Ready to start?** Upload a CSV file in the sidebar to unlock the full potential of your data.")
+        st.markdown("""
+        <div style='background: rgba(59, 130, 146, 0.1); padding: 20px; border-radius: 15px; border-left: 5px solid #3b82f6;'>
+            <b>Pro Tip:</b> Use the "Auto-Tune" buttons in the tabs once you upload a file for the most powerful results.
+        </div>
+        """, unsafe_allow_html=True)
