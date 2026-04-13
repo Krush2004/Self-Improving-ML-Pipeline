@@ -3,8 +3,6 @@ import pandas as pd
 import io
 import plotly.express as px
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
-
-# Relative imports from structured packages
 from model.supervised_pipeline import preprocess_data, train_and_evaluate
 from model.unsupervised_pipeline import preprocess_unsupervised, auto_kmeans_clustering, auto_tune_clustering
 from agent.agent import analyze_dataset_initial, self_critique_models, chat_with_copilot
@@ -41,9 +39,11 @@ st.markdown("""
         box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
         display: flex;
         flex-direction: column;
+        justify-content: center;
         height: 100%;
-        min-height: 260px;
     }
+    .feature-card { min-height: 260px; }
+    .metric-card { min-height: 150px; }
     .feature-card:hover {
         transform: translateY(-5px);
         border: 1px solid rgba(59, 130, 246, 0.5);
@@ -54,7 +54,14 @@ st.markdown("""
     .feature-title { font-size: 1.5rem; font-weight: 700; color: #fff; margin-bottom: 10px; }
     .feature-desc { font-size: 1rem; color: #a1a1aa; line-height: 1.6; }
     .metric-title { font-size: 1.2rem; color: #a1a1aa; margin-bottom: 5px; font-weight: 500; }
-    .metric-value { font-size: 2.2rem; font-weight: 700; color: #3b82f6; }
+    .metric-value { 
+        font-size: 1.8rem; 
+        font-weight: 700; 
+        color: #3b82f6; 
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
     
     .hero-section {
         padding: 60px 0;
@@ -95,7 +102,6 @@ if "messages" not in st.session_state:
 if "ml_context" not in st.session_state:
     st.session_state["ml_context"] = "No pipeline has been run yet. Tell the user to run the Supervised or Unsupervised pipeline first."
 
-# Header logic moved inside the uploaded_file conditional
 
 # Sidebar Configuration
 st.sidebar.header("Data Source")
@@ -110,18 +116,36 @@ if uploaded_file is None:
     st.sidebar.caption("v2.1.0 • Built with Pinecone & Langchain")
 
 if uploaded_file is not None:
-    st.title("🧠 Multi-AI Agent Workstation")
+    st.markdown("""
+    <div style='background: linear-gradient(90deg, rgba(59, 130, 246, 0.1) 0%, transparent 100%); padding: 20px; border-radius: 15px; border-left: 5px solid #3b82f6; margin-bottom: 25px;'>
+        <h1 style='font-size: 2.5rem !important; margin: 0;'>🧠 Multi-AI Agent Workstation</h1>
+        <p style='margin: 5px 0 0 0; color: #a1a1aa;'>Advanced ML Pipeline & Agentic Self-Critique System</p>
+    </div>
+    """, unsafe_allow_html=True)
     df = pd.read_csv(uploaded_file)
     
     # Populate the Sidebar with Stats to keep it active
     st.sidebar.divider()
-    st.sidebar.subheader("Dataset Dashboard")
-    st.sidebar.write(f"**Rows:** {df.shape[0]}")
-    st.sidebar.write(f"**Columns:** {df.shape[1]}")
-    missing_data = df.isnull().sum().sum()
-    st.sidebar.write(f"**Total Missing Values:** {missing_data}")
-    st.sidebar.write("**Column Types:**")
-    st.sidebar.dataframe(df.dtypes.astype(str).rename("Type"), use_container_width=True)
+    st.sidebar.markdown("### 📊 Dataset Dashboard")
+    
+    # Custom Sidebar Metric Cards
+    st.sidebar.markdown(f"""
+    <div style='background: rgba(255, 255, 255, 0.05); padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 3px solid #3b82f6;'>
+        <p style='margin:0; font-size: 0.9rem; color: #a1a1aa;'>Total Rows</p>
+        <p style='margin:0; font-size: 1.2rem; font-weight: bold;'>🔢 {df.shape[0]:,}</p>
+    </div>
+    <div style='background: rgba(255, 255, 255, 0.05); padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 3px solid #10b981;'>
+        <p style='margin:0; font-size: 0.9rem; color: #a1a1aa;'>Total Columns</p>
+        <p style='margin:0; font-size: 1.2rem; font-weight: bold;'>📐 {df.shape[1]}</p>
+    </div>
+    <div style='background: rgba(255, 255, 255, 0.05); padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 3px solid #f59e0b;'>
+        <p style='margin:0; font-size: 0.9rem; color: #a1a1aa;'>Missing Values</p>
+        <p style='margin:0; font-size: 1.2rem; font-weight: bold;'>⚠️ {df.isnull().sum().sum():,}</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    with st.sidebar.expander("🔍 Detailed Column Types", expanded=False):
+        st.dataframe(df.dtypes.astype(str).rename("Type"), use_container_width=True)
     
     # Create the Tabs
     tab1, tab2, tab3, tab4 = st.tabs([
@@ -190,24 +214,30 @@ if uploaded_file is not None:
     # --- TAB 2: SUPERVISED ---
     with tab2:
         st.header("Supervised Machine Learning")
-        st.write("Select a target column to predict and find the best algorithm.")
         target_col = st.selectbox("Select Target Column", options=df.columns, index=len(df.columns)-1)
+        
+        # Feature Selection
+        feature_options = [c for c in df.columns if c != target_col]
+        selected_features = st.multiselect("Select Feature Columns", options=feature_options, default=feature_options, help="Choose which columns the model should use for learning.")
         
         # Dual Buttons for Basic vs Advanced
         c_btn1, c_btn2 = st.columns(2)
         with c_btn1:
-            run_basic = st.button("🚀 Run Baseline Pipeline", type="primary", use_container_width=True)
+            run_basic = st.button("🚀 Run Baseline Pipeline", type="primary", use_container_width=True, disabled=len(selected_features) == 0)
         with c_btn2:
-            run_advanced = st.button("🔥 Auto-Tune & Apply AI Suggestions (Slower)", type="secondary", use_container_width=True)
+            run_advanced = st.button("🔥 Auto-Tune & Apply AI Suggestions (Slower)", type="secondary", use_container_width=True, disabled=len(selected_features) == 0)
             
-        if run_basic or run_advanced:
+        if len(selected_features) == 0:
+            st.warning("⚠️ Please select at least one feature column to continue training models.")
+            
+        if (run_basic or run_advanced) and len(selected_features) > 0:
             if run_advanced:
                 st.info("Applying AI Suggestions: SMOTE Class Balancing and RandomizedSearchCV Hyperparameter Tuning initialized...")
                 
             spinner_msg = "Hyper-Tuning Models (This might take 30-60s)..." if run_advanced else "Training Baseline Models..."
             with st.spinner(spinner_msg):
                 try:
-                    X_scaled, y, task_type, label_encoder = preprocess_data(df, target_col)
+                    X_scaled, y, task_type, label_encoder, preprocessors = preprocess_data(df, target_col, feature_cols=selected_features)
                     
                     results_df, best_model_name, best_model, trained_models, X_test, y_test, tuning_info = train_and_evaluate(X_scaled, y, task_type, apply_improvements=run_advanced)
                     
@@ -215,22 +245,27 @@ if uploaded_file is not None:
                     st.markdown(f"### Best Performing Model: `{best_model_name}`")
                     
                     if task_type == 'classification':
-                        best_row = results_df[results_df['Model'] == best_model_name].iloc[0]
+                        # Sort by Accuracy descending
+                        results_df = results_df.sort_values(by='Accuracy', ascending=False)
+                        best_row = results_df.iloc[0]
                         c1, c2, c3, c4 = st.columns(4)
-                        c1.markdown(f"<div class='metric-card'><div class='metric-title'>Accuracy</div><div class='metric-value'>{best_row['Accuracy']:.3f}</div></div>", unsafe_allow_html=True)
-                        c2.markdown(f"<div class='metric-card'><div class='metric-title'>Precision</div><div class='metric-value'>{best_row['Precision']:.3f}</div></div>", unsafe_allow_html=True)
-                        c3.markdown(f"<div class='metric-card'><div class='metric-title'>Recall</div><div class='metric-value'>{best_row['Recall']:.3f}</div></div>", unsafe_allow_html=True)
-                        c4.markdown(f"<div class='metric-card'><div class='metric-title'>F1 Score</div><div class='metric-value'>{best_row['F1 Score']:.3f}</div></div>", unsafe_allow_html=True)
+                        c1.markdown(f"<div class='metric-card'><div class='metric-title'>Accuracy</div><div class='metric-value'>{best_row['Accuracy']:.4f}</div></div>", unsafe_allow_html=True)
+                        c2.markdown(f"<div class='metric-card'><div class='metric-title'>Precision</div><div class='metric-value'>{best_row['Precision']:.4f}</div></div>", unsafe_allow_html=True)
+                        c3.markdown(f"<div class='metric-card'><div class='metric-title'>Recall</div><div class='metric-value'>{best_row['Recall']:.4f}</div></div>", unsafe_allow_html=True)
+                        c4.markdown(f"<div class='metric-card'><div class='metric-title'>F1 Score</div><div class='metric-value'>{best_row['F1 Score']:.4f}</div></div>", unsafe_allow_html=True)
                         
                         fig = px.bar(results_df, x='Model', y='Accuracy', color='Model', title="Model Accuracy Comparison")
                         fig.update_layout(template="plotly_dark")
                         st.plotly_chart(fig, use_container_width=True)
                     else:
-                        best_row = results_df[results_df['Model'] == best_model_name].iloc[0]
+                        # Sort by RMSE ascending (lower is better)
+                        results_df = results_df.sort_values(by='RMSE', ascending=True)
+                        best_row = results_df.iloc[0]
                         c1, c2, c3, c4 = st.columns(4)
-                        c1.markdown(f"<div class='metric-card'><div class='metric-title'>RMSE</div><div class='metric-value'>{best_row['RMSE']:.3f}</div></div>", unsafe_allow_html=True)
-                        c2.markdown(f"<div class='metric-card'><div class='metric-title'>MSE</div><div class='metric-value'>{best_row['MSE']:.3f}</div></div>", unsafe_allow_html=True)
-                        c3.markdown(f"<div class='metric-card'><div class='metric-title'>MAE</div><div class='metric-value'>{best_row['MAE']:.3f}</div></div>", unsafe_allow_html=True)
+                        # Use commas for thousands in large error values
+                        c1.markdown(f"<div class='metric-card'><div class='metric-title'>RMSE</div><div class='metric-value'>{best_row['RMSE']:,.2f}</div></div>", unsafe_allow_html=True)
+                        c2.markdown(f"<div class='metric-card'><div class='metric-title'>MSE</div><div class='metric-value'>{best_row['MSE']:,.0f}</div></div>", unsafe_allow_html=True)
+                        c3.markdown(f"<div class='metric-card'><div class='metric-title'>MAE</div><div class='metric-value'>{best_row['MAE']:,.2f}</div></div>", unsafe_allow_html=True)
                         c4.markdown(f"<div class='metric-card'><div class='metric-title'>R2 Score</div><div class='metric-value'>{best_row['R2 Score']:.3f}</div></div>", unsafe_allow_html=True)
                         
                         fig = px.bar(results_df, x='Model', y='RMSE', color='Model', title="Model RMSE Comparison (Lower is Better)")
@@ -238,12 +273,12 @@ if uploaded_file is not None:
                         st.plotly_chart(fig, use_container_width=True)
                     
                     if task_type == 'classification':
-                        styled_df = results_df.style.background_gradient(cmap='RdYlGn', subset=['Accuracy', 'Precision', 'Recall', 'F1 Score'])
+                        styled_df = results_df.round(4).style.background_gradient(cmap='RdYlGn', subset=['Accuracy', 'Precision', 'Recall', 'F1 Score'])
                     else:
                         # RdYlGn_r reverses the colormap so lower error = green
-                        styled_df = results_df.style.background_gradient(cmap='RdYlGn_r', subset=['RMSE', 'MSE', 'MAE'])
+                        styled_df = results_df.round(2).style.background_gradient(cmap='RdYlGn_r', subset=['RMSE', 'MSE', 'MAE'])
                         
-                    st.dataframe(styled_df, use_container_width=True)
+                    st.dataframe(styled_df, use_container_width=True, hide_index=True)
                     
                     # --- PIPELINE CONFIGURATION & PARAMETERS USED ---
                     st.divider()
@@ -295,6 +330,12 @@ if uploaded_file is not None:
                                 else:
                                     st.caption("Using sklearn defaults")
                             st.markdown("---")
+                            
+                    # Preview Preprocessed Data
+                    with st.expander("📦 View Preprocessed Features (After Transformations)", expanded=False):
+                        st.markdown("**Note:** This shows the data after imputation, encoding, and RobustScaling.")
+                        st.dataframe(X_scaled.head(100), use_container_width=True)
+                        st.caption(f"Showing first 100 rows of {X_scaled.shape[1]} total features.")
                     
                     # --- IMPROVEMENT SUGGESTIONS ---
                     st.divider()
@@ -304,8 +345,10 @@ if uploaded_file is not None:
                     ])
                     
                     with st.spinner("Generating Agent Critique based on results..."):
+                        # Add a metric guide to prevent AI hallucination on RMSE/Error metrics
+                        metric_guide = "NOTE: For RMSE, MSE, and MAE, LOWER values are BETTER. For Accuracy and R2 Score, HIGHER values are BETTER."
                         critique = self_critique_models(
-                            results_df.to_string() + f"\n\nParameters Used:\n{tuning_summary}",
+                            f"{metric_guide}\n\n{results_df.to_string()}\n\nParameters Used:\n{tuning_summary}",
                             best_model_name
                         )
                         st.markdown("### 💡 AI Improvement Suggestions")
@@ -318,10 +361,14 @@ if uploaded_file is not None:
                     st.session_state["trained_task_type"] = task_type
                     st.session_state["trained_label_encoder"] = label_encoder
                     st.session_state["trained_original_df"] = df
+                    st.session_state["trained_preprocessed_df"] = X_scaled # Store for preview
                     st.session_state["trained_target_col"] = target_col
+                    st.session_state["trained_selected_features"] = selected_features
+                    st.session_state["trained_preprocessors"] = preprocessors # Key fix: store memory
                     
                     # Update Chat Context Memory
-                    st.session_state["ml_context"] = f"Supervised Pipeline Run for '{target_col}'. Advanced Auto-Tuning Applied: {run_advanced}. Best Model: {best_model_name}. \nResults:\n{results_df.to_string()} \n\nParameters Used:\n{tuning_summary}\n\nCritique:\n{critique} \n\nPreprocessing used: Dropped NaN targets, Mean Imputer for nums, Mode Imputer+GetDummies for cats, RobustScaler, VarianceThreshold, Correlation Filter. SMOTE Active: {run_advanced}"
+                    metric_guide_context = "CRITICAL: In this dataset, RMSE/MSE/MAE are error metrics (Lower is Better). Accuracy/R2 are performance metrics (Higher is Better)."
+                    st.session_state["ml_context"] = f"{metric_guide_context} Supervised Pipeline Run for '{target_col}'. Advanced Auto-Tuning Applied: {run_advanced}. Best Model: {best_model_name}. \nResults:\n{results_df.to_string()} \n\nParameters Used:\n{tuning_summary}\n\nCritique:\n{critique}"
                         
                 except Exception as e:
                     st.error(f"An error occurred: {e}")
@@ -338,9 +385,10 @@ if uploaded_file is not None:
             task_type_saved = st.session_state["trained_task_type"]
             label_enc_saved = st.session_state["trained_label_encoder"]
             model_saved = st.session_state["trained_best_model"]
+            selected_features_saved = st.session_state["trained_selected_features"]
             
-            # Get original feature columns (before preprocessing)
-            original_features = [c for c in original_df.columns if c != target_col_saved]
+            # Get original feature columns (those selected during training)
+            original_features = selected_features_saved
             
             with st.form("prediction_form"):
                 st.markdown("**Enter feature values:**")
@@ -353,15 +401,26 @@ if uploaded_file is not None:
                     for j, col_name in enumerate(original_features[i:i+cols_per_row]):
                         with row_cols[j]:
                             col_data = original_df[col_name]
-                            if col_data.dtype in ['int64', 'float64']:
-                                # Numeric: show number input with min/max/mean
+                            if col_data.dtype == 'int64':
+                                # Integer: show number input without decimals
+                                col_min = int(col_data.min()) if not pd.isna(col_data.min()) else 0
+                                col_max = int(col_data.max()) if not pd.isna(col_data.max()) else 100
+                                col_mean = int(col_data.mean()) if not pd.isna(col_data.mean()) else 0
+                                input_values[col_name] = st.number_input(
+                                    f"{col_name}", 
+                                    min_value=col_min, max_value=col_max, value=col_mean,
+                                    step=1,
+                                    help=f"Range: {col_min} – {col_max} (Integer)"
+                                )
+                            elif col_data.dtype == 'float64':
+                                # Numeric: show number input with decimals
                                 col_min = float(col_data.min()) if not pd.isna(col_data.min()) else 0.0
                                 col_max = float(col_data.max()) if not pd.isna(col_data.max()) else 100.0
                                 col_mean = float(col_data.mean()) if not pd.isna(col_data.mean()) else 0.0
                                 input_values[col_name] = st.number_input(
                                     f"{col_name}", 
                                     min_value=col_min, max_value=col_max, value=col_mean,
-                                    help=f"Range: {col_min:.2f} – {col_max:.2f}"
+                                    help=f"Range: {col_min:.2f} – {col_max:.2f} (Float)"
                                 )
                             else:
                                 # Categorical: show selectbox with unique values
@@ -374,42 +433,44 @@ if uploaded_file is not None:
             
             if predict_btn:
                 try:
-                    # Build input DataFrame
+                    # Retrieve saved preprocessors
+                    prep = st.session_state["trained_preprocessors"]
                     input_df = pd.DataFrame([input_values])
                     
-                    # Apply same preprocessing as training
-                    from sklearn.impute import SimpleImputer
-                    from sklearn.preprocessing import RobustScaler
-                    from sklearn.feature_selection import VarianceThreshold
+                    # 1. Impute Nums
+                    if prep['num_imputer']:
+                        input_df[prep['num_cols']] = prep['num_imputer'].transform(input_df[prep['num_cols']])
                     
-                    num_cols = input_df.select_dtypes(include=['int64', 'float64']).columns
-                    cat_cols = input_df.select_dtypes(exclude=['int64', 'float64']).columns
+                    # 2. Impute & Manual One-Hot Encode
+                    if prep['cat_imputer']:
+                        # Impute first
+                        input_df[prep['cat_cols']] = prep['cat_imputer'].transform(input_df[prep['cat_cols']])
+                        
+                        # Instead of get_dummies (which fails on single rows with drop_first=True),
+                        # manually construct the dummy columns expected by the model.
+                        for cat_col in prep['cat_cols']:
+                            current_val = str(input_df[cat_col].iloc[0])
+                            # Identify dummy columns in 'final_columns' matching this feature
+                            for final_col in prep['final_columns']:
+                                if final_col.startswith(f"{cat_col}_"):
+                                    # If the dummy column name suffix matches our current value, set 1, else 0
+                                    # This correctly handles the 'drop_first' case (if value was dropped, none will match)
+                                    suffix = final_col[len(f"{cat_col}_"):]
+                                    input_df[final_col] = 1 if suffix == current_val else 0
+                        
+                        # Drop original string columns
+                        input_df = input_df.drop(columns=prep['cat_cols'])
                     
-                    if len(num_cols) > 0:
-                        num_imputer = SimpleImputer(strategy='mean')
-                        num_imputer.fit(original_df[num_cols])
-                        input_df[num_cols] = num_imputer.transform(input_df[num_cols])
-                    
-                    if len(cat_cols) > 0:
-                        cat_imputer = SimpleImputer(strategy='most_frequent')
-                        cat_imputer.fit(original_df[cat_cols])
-                        input_df[cat_cols] = cat_imputer.transform(input_df[cat_cols])
-                        input_df = pd.get_dummies(input_df, columns=cat_cols, drop_first=True)
-                    
-                    # Align columns with training features
-                    for col in feature_cols_saved:
+                    # 3. Align order and handle missing (remaining) columns
+                    for col in prep['final_columns']:
                         if col not in input_df.columns:
                             input_df[col] = 0
-                    input_df = input_df[feature_cols_saved]
+                    input_df = input_df[prep['final_columns']]
                     
-                    # Scale
-                    scaler = RobustScaler()
-                    scaler.fit(original_df.drop(columns=[target_col_saved]).select_dtypes(include=['int64', 'float64']))
-                    # Scale only numeric columns that exist
-                    num_in_features = [c for c in input_df.columns if c in original_df.select_dtypes(include=['int64', 'float64']).columns]
-                    if len(num_in_features) > 0:
-                        input_df[num_in_features] = scaler.transform(input_df[num_in_features])
+                    # 4. Scale
+                    input_df = pd.DataFrame(prep['scaler'].transform(input_df), columns=input_df.columns)
                     
+                    # 5. Predict
                     prediction = model_saved.predict(input_df)[0]
                     
                     # Decode if classification with label encoder
@@ -429,21 +490,26 @@ if uploaded_file is not None:
 
     # --- TAB 3: UNSUPERVISED ---
     with tab3:
-        st.header("Unsupervised Clustering")
         st.write("Find hidden patterns. Choose **Baseline** for quick KMeans or **Auto-Tune** to compare 5 algorithms with hyperparameter optimization.")
+        
+        # Feature Selection for Clustering
+        selected_unsupervised_features = st.multiselect("Select Columns for Clustering", options=df.columns.tolist(), default=df.columns.tolist(), help="Choose which features should be used to group the data.")
         
         # Dual Buttons
         uc1, uc2 = st.columns(2)
         with uc1:
-            run_baseline_clust = st.button("🧩 Run Baseline KMeans", type="primary", use_container_width=True)
+            run_baseline_clust = st.button("🧩 Run Baseline KMeans", type="primary", use_container_width=True, disabled=len(selected_unsupervised_features) == 0)
         with uc2:
-            run_autotune_clust = st.button("🔥 Auto-Tune All Algorithms (Slower)", type="secondary", use_container_width=True)
+            run_autotune_clust = st.button("🔥 Auto-Tune All Algorithms (Slower)", type="secondary", use_container_width=True, disabled=len(selected_unsupervised_features) == 0)
         
+        if len(selected_unsupervised_features) == 0:
+            st.warning("⚠️ Please select at least one column for clustering analysis.")
+            
         if run_baseline_clust or run_autotune_clust:
             spinner_msg = "Auto-Tuning 5 Clustering Algorithms..." if run_autotune_clust else "Finding Optimal K for KMeans..."
             with st.spinner(spinner_msg):
                 try:
-                    X_scaled = preprocess_unsupervised(df)
+                    X_scaled = preprocess_unsupervised(df, feature_cols=selected_unsupervised_features)
                     
                     if run_autotune_clust:
                         (best_k, best_score, best_algo_name, best_config,

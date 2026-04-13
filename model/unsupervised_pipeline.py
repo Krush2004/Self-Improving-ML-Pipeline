@@ -7,9 +7,14 @@ from sklearn.mixture import GaussianMixture
 from sklearn.decomposition import PCA
 from sklearn.metrics import silhouette_score
 
-def preprocess_unsupervised(df):
+def preprocess_unsupervised(df, feature_cols=None):
     """Preprocess data for unsupervised learning."""
     df = df.copy()
+    
+    if feature_cols is not None:
+        if len(feature_cols) == 0:
+            raise ValueError("No feature columns selected. Please select at least one feature for clustering.")
+        df = df[feature_cols]
     
     # Identify numerical and categorical columns
     num_cols = df.select_dtypes(include=['int64', 'float64']).columns

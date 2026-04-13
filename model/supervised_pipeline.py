@@ -32,7 +32,7 @@ def get_task_type(y):
     else:
         return 'regression'
 
-def preprocess_data(df, target_col):
+def preprocess_data(df, target_col, feature_cols=None):
     """Advanced preprocessing pipeline with feature engineering."""
     df = df.copy()
     
@@ -40,7 +40,15 @@ def preprocess_data(df, target_col):
     df = df.dropna(subset=[target_col])
     
     # Separate features and target
-    X = df.drop(columns=[target_col])
+    if feature_cols is not None:
+        # Ensure target_col is NOT in features to avoid data leakage
+        clean_features = [f for f in feature_cols if f != target_col]
+        if len(clean_features) == 0:
+            raise ValueError("No feature columns selected. Please select at least one feature to train the model.")
+        X = df[clean_features]
+    else:
+        X = df.drop(columns=[target_col])
+        
     y = df[target_col]
     
     # Handle target encoding for classification if target is string
@@ -91,7 +99,16 @@ def preprocess_data(df, target_col):
     scaler = RobustScaler()
     X_scaled = pd.DataFrame(scaler.fit_transform(X), columns=X.columns)
     
-    return X_scaled, y, task_type, label_encoder
+    preprocessors = {
+        'num_imputer': num_imputer if len(num_cols) > 0 else None,
+        'cat_imputer': cat_imputer if len(cat_cols) > 0 else None,
+        'scaler': scaler,
+        'final_columns': list(X_scaled.columns),
+        'num_cols': list(num_cols),
+        'cat_cols': list(cat_cols)
+    }
+    
+    return X_scaled, y, task_type, label_encoder, preprocessors
 
 def auto_tune_model(name, base_model, task_type):
     """Returns a RandomizedSearchCV wrapper with expanded hyperparameter grids."""

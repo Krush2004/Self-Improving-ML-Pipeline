@@ -1,4 +1,4 @@
-# 🤖 Self-Improving AI Multi-Agent Workstation
+# 🤖 Self-Improving ML Pipeline Workstation
 
 A premium, all-in-one machine learning workstation that leverages **LLM Agents**, **Vector Memory**, and **Automated Pipelines** to build, tune, and critique ML models. This workstation doesn't just train models—it learns from its own failures and successes over time.
 
