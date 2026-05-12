@@ -1,7 +1,7 @@
 import os
 import uuid
 import json
-from langchain_openai import ChatOpenAI
+from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from pinecone import Pinecone, ServerlessSpec
 from dotenv import load_dotenv
@@ -16,8 +16,8 @@ def get_llm():
         
     llm = ChatOpenAI(
         openai_api_key=api_key,
-        openai_api_base="https://openrouter.ai/api/v1",
-        model_name="openai/gpt-3.5-turbo", # Universal fallback, can be adjusted 
+        openai_api_base=
+        model_name="llama-3.1-8b-instant",
         temperature=0.3
     )
     return llm
