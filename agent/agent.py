@@ -14,10 +14,9 @@ def get_llm():
     if not api_key or api_key == "your_openrouter_api_key_here":
         raise ValueError("Missing OPENROUTER_API_KEY in .env file.")
         
-    llm = ChatOpenAI(
+    llm = ChatGroq(
         openai_api_key=api_key,
-        openai_api_base=
-        model_name="llama-3.1-8b-instant",
+        model="llama-3.1-8b-instant",
         temperature=0.3
     )
     return llm
